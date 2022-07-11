@@ -98,7 +98,41 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
-	return
+	// t[tableID]_i
+	// 后缀:_i
+	// len: RecordRowKeyLen
+	// 1. 查看合法性
+	error_return := func() (tableID int64, handle int64, err error) {
+		return 0, 0, errInvalidRecordKey.GenWithStack("Invaild Record Key- %q", key)
+
+	}
+
+	if len(key) < RecordRowKeyLen || key[0] != tablePrefix[0] {
+		return error_return()
+	}
+
+	// 减去_i
+	key = key[tablePrefixLength:]
+
+	// 2. 进行解码
+	key, tableID, err = codec.DecodeInt(key)
+
+	// 判断解码是否成功
+	if err != nil {
+		return 0, 0, errors.Trace(err)
+	}
+
+	// 判断前缀部位tableprefix
+	if !key.HasPrefix(recordPrefixSep) {
+		return error_return()
+	}
+	key = key[recordPrefixSepLength:]
+	key, handle, err = codec.DecodeInt(key)
+
+	if err != nil {
+		return 0, 0, errors.Trace(err)
+	}
+	return tableID, handle, nil
 }
 
 // appendTableIndexPrefix appends table index prefix  "t[tableID]_i".
@@ -118,7 +152,7 @@ func EncodeIndexSeekKey(tableID int64, idxID int64, encodedValue []byte) kv.Key 
 	return key
 }
 
-// DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
+//DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
 func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues []byte, err error) {
 	/* Project 1-2: your code here
 	 * DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
@@ -148,7 +182,42 @@ func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
-	return tableID, indexID, indexValues, nil
+	// 错误返回
+	error_return := func() (table int64, indexID int64, indexValues []byte, err error) {
+		return 0, 0, nil, errInvalidIndexKey.GenWithStack("invalid index key - %q", key)
+	}
+
+	// 判断长度和开头的格式
+	if len(key) < RecordRowKeyLen || key[0] != 't' {
+		return error_return()
+	}
+
+	//去除开头的t
+	key = key[tablePrefixLength:]
+
+	// 进行解码得到tableID
+	key, tableID, err = codec.DecodeInt(key)
+	if err != nil {
+		return 0, 0, nil, errors.Trace(err)
+	}
+
+	// 判断是否存储index前缀
+	if !key.HasPrefix(indexPrefixSep) {
+		return error_return()
+	}
+
+	// 去除前缀
+	key = key[recordPrefixSepLength:]
+
+	// 进行解码
+	key, indexID, err = codec.DecodeInt(key)
+
+	// 是否解码发生错误
+	if err != nil {
+		return 0, 0, nil, errors.Trace(err)
+	}
+	return tableID, indexID, key, nil
+
 }
 
 // DecodeIndexKey decodes the key and gets the tableID, indexID, indexValues.
