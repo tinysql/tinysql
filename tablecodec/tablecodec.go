@@ -111,7 +111,7 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 		return error_return()
 	}
 
-	// 减去_i
+	// 减去t
 	key = key[tablePrefixLength:]
 
 	// 2. 进行解码
@@ -122,7 +122,7 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 		return 0, 0, errors.Trace(err)
 	}
 
-	// 判断前缀部位tableprefix
+	// 判断前缀部位recordPrefixsep
 	if !key.HasPrefix(recordPrefixSep) {
 		return error_return()
 	}
